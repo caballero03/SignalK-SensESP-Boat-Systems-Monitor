@@ -46,8 +46,8 @@ The SH-ESP32 board has a convienient I2C connector that can be used for a small 
 
 The display has a very basic organization whereas the screen of 128 x 64 pixels is divided into four columns and eight rows of text "cells". This should allow enough space to show most/all of the raw data points as well as some status messages.
 
-The font size of 1 has characters of 6 x 8 pixels with a one pixel bsline spacing. Seen below is an image of the text cells and some text charactors for comparison.
+The font size of 1 has characters of 6 x 8 pixels with a one pixel baseline spacing. Seen below is an image of the text cells and some text characters for comparison.
 
-![Diagram grid of the display layout with soe text boudries](src/displays/SSD1306Display.svg?raw=false)
+![Diagram grid of the display layout with soe text boudries](src/displays/SSD1306Display.svg?raw=true)
 
 
