@@ -1,0 +1,295 @@
+https://github.com/hatlabs/SH-ESP32-onewire-temperature/blob/main/src/main.cpp
+
+
+// Platformio.ini stuff
+lib_deps = 
+  SignalK/SensESP@^2.0.0
+  SensESP/OneWire@^2.0.0
+  adafruit/Adafruit SSD1306@^2.5.1
+
+
+SSD1306 OLED display wth Adafruit GFX library
+-------------------------------------------------
+128 x 64 display
+font size 1 = 6 x 8 chars
+Makes:
+  21 x 8 lines text display
+
+8 rows by 3 cols
+------------------------
+7 chars per cell
+
+
+
+
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <N2kMessages.h>
+#include <NMEA2000_esp32.h>
+
+#include "sensesp/signalk/signalk_output.h"
+#include "sensesp_app_builder.h"
+#include "sensesp_onewire/onewire_temperature.h"
+
+// 1-Wire data pin on SH-ESP32
+#define ONEWIRE_PIN 4
+
+// SDA and SCL pins on SH-ESP32
+#define SDA_PIN 16
+#define SCL_PIN 17
+
+// CAN bus (NMEA 2000) pins on SH-ESP32
+#define CAN_RX_PIN GPIO_NUM_34
+#define CAN_TX_PIN GPIO_NUM_32
+
+// OLED display width and height, in pixels
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+
+ets Jul 29 2019 12:21:46
+
+rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+I (100) filesystem.cpp: Filesystem initialized
+D (114) saveable.cpp: Configuration loaded for /system/hostname
+D (115) config_item.h: Registering ConfigItemT with path /system/hostname
+V (248) saveable.cpp: Configuration saved for /system/hostname: {"value":"sensESP"}
+D (289) saveable.cpp: Configuration loaded for /System/WiFi Settings
+D (290) networking.cpp: Enabling Networking
+D (312) ARDUINO: Arduino Event: 0 - WIFI_READY
+V (1191) ARDUINO: STA Started
+V (1193) ARDUINO: Configuring Station static IP: 0.0.0.0, MASK: 0.0.0.0, GW: 0.0.0.0
+D (1194) ARDUINO: Arduino Event: 2 - STA_START
+V (1209) ARDUINO: STA Stopped
+D (1210) ARDUINO: Arduino Event: 3 - STA_STOP
+V (1210) ARDUINO: AP Started
+D (1212) ARDUINO: Arduino Event: 10 - AP_START
+I (1213) networking.h: WiFi Access Point enabled, SSID: sensESP
+I (1219) networking.h: IP address of Device: 192.168.4.1
+I (1224) networking.cpp: Starting access point sensESP
+D (1230) config_item.h: Registering ConfigItemT with path /System/WiFi Settings
+D (1422) config_item.h: Registering ConfigItemT with path /system/httpserver
+I (1423) saveable.cpp: Not loading configuration: no config_path specified: 
+I (1425) saveable.cpp: Not loading configuration: no config_path specified: 
+D (1439) saveable.cpp: Configuration loaded for /System/Signal K Settings
+D (1440) config_item.h: Registering ConfigItemT with path /System/Signal K Settings
+D (1447) base_button.h: Button handler started
+I (1451) ARDUINO: Initialising I2C Master: sda=16 scl=17 freq=100000
+W (1457) ARDUINO: Bus already started in Master Mode.
+W (1461) ARDUINO: Bus already started in Master Mode.
+W (1467) ARDUINO: Bus already started in Master Mode.
+E (1755) onewire_temperature.cpp: FATAL: Unable to allocate a OneWire sensor for /outdoorTemperature/oneWire. All sensors have already been configured. Check the physical wiring of your sensors.
+W (2122) signalk_output.cpp: WARNING - No metadata for environment.outside.temperature. Numeric values should specify units
+W (2665) signalk_output.cpp: WARNING - No metadata for propulsion.main.temperature. Numeric values should specify units
+W (3208) signalk_output.cpp: WARNING - No metadata for propulsion.main.oilPressure. Numeric values should specify units
+W (3930) signalk_output.cpp: WARNING - No metadata for tanks.fuel.main.currentLevel. Numeric values should specify units
+W (4473) signalk_output.cpp: WARNING - No metadata for environment.water.temperature. Numeric values should specify units
+W (5016) signalk_output.cpp: WARNING - No metadata for electrical.batteries.houseBattery.voltage. Numeric values should specify units
+W (5559) signalk_output.cpp: WARNING - No metadata for electrical.batteries.houseBattery.current. Numeric values should specify units
+W (6282) signalk_output.cpp: WARNING - No metadata for tanks.freshWater.main.currentLevel. Numeric values should specify units
+I (6464) saveable.cpp: Not loading configuration: no config_path specified: 
+I (6465) saveable.cpp: Not loading configuration: no config_path specified: 
+I (6470) http_server.h: HTTP server started
+E (6472) ARDUINO: Failed adding service http.tcp.
+
+D (6476) signalk_ws_client.cpp: Starting SKWSClient
+E (6480) ARDUINO: Failed adding service signalk-sensesp.tcp.
+
+I (6480) signalk_ws_client.cpp: Initiating websocket connection with server...
+D (6493) signalk_ws_client.cpp: Websocket is connecting to Signal K server on address 192.168.0.152:3000
+I (6493) discovery.cpp: mDNS responder started for hostname 'sensESP'
+D (6502) signalk_ws_client.cpp: No prior authorization token present.
+D (6514) signalk_ws_client.cpp: Preparing a new access request
+D (6521) signalk_ws_client.cpp: Access request: {"clientId":"f63787c5-fcce-1cf0-bc93-dd89be3eba88","description":"SensESP device: sensESP","permissions":"readwrite"}
+D (6535) signalk_ws_client.cpp: Access request url: http://192.168.0.152:3000/signalk/v1/access/requests
+V (6544) ARDUINO: url: http://192.168.0.152:3000/signalk/v1/access/requests
+D (6550) ARDUINO: protocol: http, host: 192.168.0.152 port: 3000 url: /signalk/v1/access/requests
+D (6559) ARDUINO: request type: 'POST' redirCount: 0
+
+E (7513) ARDUINO: i2cRead returned Error 263
+E (8513) ARDUINO: i2cRead returned Error 263
+
+
+
+
+
+
+
+
+
+
+
+
+add_sample(CurveInterpolator::Sample(0, 4095.00));
+    add_sample(CurveInterpolator::Sample(115, 2000.00));
+    add_sample(CurveInterpolator::Sample(230, 127.00));
+    add_sample(CurveInterpolator::Sample(345, 50.00));
+    add_sample(CurveInterpolator::Sample(460, 16.0));
+    add_sample(CurveInterpolator::Sample(1000, 4.0));
+    
+    
+    
+    
+    
+0, 4095.00
+115, 2000.00
+230, 127.00
+345, 50.00
+460, 16.0
+1000, 4.0
+    
+Below is an example LUT in C which takes a lightness value as an integer in the range [0,255][0,255] (8-bit) and gives you the corresponding PWM duty cycle as an integer in the range [0,255][0,255]. Values have be rounded DOWN to the nearest integer (i.e. float is cast to an int).
+
+const uint8_t CIE_LIGHTNESS_TO_PWM_LUT_256_IN_8BIT_OUT[] = {
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    1,    1,    1,    1,    1,    1,
+    1,    1,    1,    2,    2,    2,    2,    2,    2,    2,    2,    3,    3,    3,    3,    3,
+    3,    3,    4,    4,    4,    4,    4,    5,    5,    5,    5,    5,    6,    6,    6,    6,
+    6,    7,    7,    7,    7,    8,    8,    8,    8,    9,    9,    9,   10,   10,   10,   11,
+   11,   11,   12,   12,   12,   13,   13,   13,   14,   14,   14,   15,   15,   16,   16,   16,
+   17,   17,   18,   18,   19,   19,   20,   20,   21,   21,   22,   22,   23,   23,   24,   24,
+   25,   25,   26,   26,   27,   28,   28,   29,   29,   30,   31,   31,   32,   33,   33,   34,
+   35,   35,   36,   37,   37,   38,   39,   40,   40,   41,   42,   43,   44,   44,   45,   46,
+   47,   48,   49,   49,   50,   51,   52,   53,   54,   55,   56,   57,   58,   59,   60,   61,
+   62,   63,   64,   65,   66,   67,   68,   69,   70,   71,   72,   73,   75,   76,   77,   78,
+   79,   80,   82,   83,   84,   85,   87,   88,   89,   90,   92,   93,   94,   96,   97,   99,
+  100,  101,  103,  104,  106,  107,  108,  110,  111,  113,  114,  116,  118,  119,  121,  122,
+  124,  125,  127,  129,  130,  132,  134,  135,  137,  139,  141,  142,  144,  146,  148,  149,
+  151,  153,  155,  157,  159,  161,  162,  164,  166,  168,  170,  172,  174,  176,  178,  180,
+  182,  185,  187,  189,  191,  193,  195,  197,  200,  202,  204,  206,  208,  211,  213,  215,
+  218,  220,  222,  225,  227,  230,  232,  234,  237,  239,  242,  244,  247,  249,  252,  255,
+};
+
+
+uint8_t gammaCorrect[] PROGMEM = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
+  0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+  0x01, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+  0x02, 0x03, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04,
+  0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x06,
+  0x06, 0x06, 0x06, 0x07, 0x07, 0x07, 0x07, 0x08,
+  0x08, 0x08, 0x09, 0x09, 0x09, 0x0A, 0x0A, 0x0A,
+  0x0B, 0x0B, 0x0C, 0x0C, 0x0C, 0x0D, 0x0D, 0x0E,
+  0x0E, 0x0F, 0x0F, 0x0F, 0x10, 0x10, 0x11, 0x11,
+  0x12, 0x12, 0x13, 0x13, 0x14, 0x14, 0x15, 0x16,
+  0x16, 0x17, 0x17, 0x18, 0x19, 0x19, 0x1A, 0x1A,
+  0x1B, 0x1C, 0x1C, 0x1D, 0x1E, 0x1E, 0x1F, 0x20,
+  0x21, 0x21, 0x22, 0x23, 0x24, 0x24, 0x25, 0x26,
+  0x27, 0x28, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D,
+  0x2E, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34,
+  0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C,
+  0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x43, 0x44, 0x45,
+  0x46, 0x47, 0x48, 0x49, 0x4B, 0x4C, 0x4D, 0x4E,
+  0x50, 0x51, 0x52, 0x53, 0x55, 0x56, 0x57, 0x59,
+  0x5A, 0x5B, 0x5D, 0x5E, 0x5F, 0x61, 0x62, 0x63,
+  0x65, 0x66, 0x68, 0x69, 0x6B, 0x6C, 0x6E, 0x6F,
+  0x71, 0x72, 0x74, 0x75, 0x77, 0x79, 0x7A, 0x7C,
+  0x7D, 0x7F, 0x81, 0x82, 0x84, 0x86, 0x87, 0x89,
+  0x8B, 0x8D, 0x8E, 0x90, 0x92, 0x94, 0x96, 0x97,
+  0x99, 0x9B, 0x9D, 0x9F, 0xA1, 0xA3, 0xA5, 0xA6,
+  0xA8, 0xAA, 0xAC, 0xAE, 0xB0, 0xB2, 0xB4, 0xB6,
+  0xB8, 0xBA, 0xBD, 0xBF, 0xC1, 0xC3, 0xC5, 0xC7,
+  0xC9, 0xCC, 0xCE, 0xD0, 0xD2, 0xD4, 0xD7, 0xD9,
+  0xDB, 0xDD, 0xE0, 0xE2, 0xE4, 0xE7, 0xE9, 0xEB,
+  0xEE, 0xF0, 0xF3, 0xF5, 0xF8, 0xFA, 0xFD, 0xFF,
+};
+
+
+
+===========================================================
+Issue text
+===========================================================
+
+  // MyDisplay.h class definition
+  
+  class MyDisplay  : public FloatConsumer, public FloatProducer//, public IntConsumer <--- Cannot get IntConsumer to work without breaking things
+                     {
+	public:
+		// Constructors
+		MyDisplay( ...);
+
+		MyDisplay( ...);
+
+		virtual void set(const float& new_value) override;
+		virtual void set(const int& new_value); // <-- Can't override without IntConsumer (of course)
+		
+	... other methods ...
+  }
+
+
+
+
+  // Usage of classin main.cpp and errors encountered
+
+  const char* DBT_sk_path = "environment.depth.belowTransducer";
+
+  /////////////////////////////////////////////
+  // Depth below transducer
+  auto* depthListener = new FloatSKListener(DBT_sk_path);
+
+  depthListener
+    ->connect_to(new MyDisplay(&tft, ROW_1, COL_3, "m", FONT_2)) // <--- connect_to() fails with "no instance of overloaded function "sensesp::SKValueListener<T>::connect_to [with T=float]" matches the argument list" when IntConsumer is added to class header
+    // Convert meters to feet
+    ->connect_to(new Linear(METERS_TO_FEET, 0.0))
+    ->connect_to(new MyDisplay(&tft, ROW_5, COL_3, "ft", FONT_2))
+    ->connect_to(new MyDisplay(&tft, DisplayType::VBAR, ROW_13, COL_10, 100, "ft", FONT_2));
+
+    
+    
+==========================================================================================
+
+Display data notes
+====================
+
+General/Environment
+--------------------
+ 3) time/date
+ #) Sunset/sunrise
+ #) Moon cycle
+ #) basic weather ???
+ 7) outdoor temperature
+ 8) Raw water temperature
+ 6) indoor temperature
+ 10) indoor luminosity (CYD/LDR)
+ #) indoor humidity
+ 
+Systems/Domestic
+--------------------
+ 1) Fresh water tank level
+ 2) Fresh water tank temperature
+ 5) Cooler/fridge/freezer temperature
+ 
+Systems/Engine
+--------------------
+ 8) Raw water temperature
+ 9) Engine coolant temperature
+11) Diesel tank level
+ #) Fuel consumption rate (gallons/hour???)
+12) Engine oil pressure
+ 4) bilge pump frequency, status indicator, plot?
+ #) Battery voltage
+ #) Battery current
+ #) Alternator charge current (CSLF5HE)
+ 
+Position/Attitude/Navigation
+--------------------
+ #) Lat/Long
+ #) Pitch/Roll
+ #) magnetic heading
+ #) true heading
+ #) depth/DBT/DBK
+ #) speed/SOG
+ 
+
+
+
+
+
