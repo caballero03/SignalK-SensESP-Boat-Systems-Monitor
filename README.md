@@ -8,3 +8,36 @@ The main board is a well-known board from Hat Labs called... TODO: What is it ca
 This project uses two small add-on boards from Hat labs to provide four ADC channels each on the I2C bus utilizing the ADS1115 IC. A custom PCB was made to provide four channels of 4-20mA inputs with simple and reasonable input protection to the ADC boards' inputs. This gives the project eight 4-20mA input channels protected by a TVS diode, shunting diodes, inline resistance and a 50mA Polyfuse per channel. See the schematic here of one of the channel input protections:
 
 ![Schematic diagram of one of the 4-2mA input processing and protection circuits for the ADC channels](docs/images/4-20mA_schematic_one_channel.png?raw=false)
+
+The left-side of the schematic shows the screw terminals to connect the 4-20mA field wiring to. The 165 ohm resistor converts the 4-20mA signal into a 0.66v to 3.3v signal to the ADC input pin. The BAT54S IC has two Schottkey diodes to clamp any over/under voltage to ground or 3.3v rail to protect the ADS1115 ADC input. There is also a 50mA self-resetting fuse (shown as a resistor in the schematic :eyeroll:).
+
+## What Does It Sense?
+The Systems Monitor device (or SysMon for short) will be responsible for reading all the boat data needed to monitor and keep the systems operating as they should. Tank levels will be known, engine running parameters will be known, etc. All of this data will be available on dashboards and small displays as needed while moored or underway.
+
+Here is a list of the proposed data points gathered and recorded by the SysMon device:
+
+#### General/Environment
+--------------------
+ * outdoor temperature
+ * Raw water temperature
+ * indoor temperature
+ * indoor luminosity (CYD/LDR)
+ * indoor humidity
+ 
+#### Systems/Domestic
+--------------------
+ * Fresh water tank level
+ * Fresh water tank temperature
+ * Cooler/fridge/freezer temperature
+ 
+#### Systems/Engine
+--------------------
+ * Raw water temperature
+ * Engine coolant temperature
+ * Diesel tank level
+ * Engine oil pressure
+ * bilge pump frequency, status indicator, history plot?
+ * Battery voltage
+ * Battery current
+ * Alternator charge current (CSLF5HE)
+ 
