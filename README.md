@@ -8,6 +8,7 @@ The main board is a well-known board from Hat Labs called... TODO: What is it ca
 This project uses two small add-on boards from Hat labs to provide four ADC channels each on the I2C bus utilizing the ADS1115 IC. A custom PCB was made to provide four channels of 4-20mA inputs with simple and reasonable input protection to the ADC boards' inputs. This gives the project eight 4-20mA input channels protected by a TVS diode, shunting diodes, inline resistance and a 50mA Polyfuse per channel. See the schematic here of one of the channel input protections:
 
 ![Schematic diagram of one of the 4-2mA input processing and protection circuits for the ADC channels](docs/images/4-20mA_schematic_one_channel.png?raw=false)
+Precarious_test_setup_IMG_1652
 
 The left-side of the schematic shows the screw terminals to connect the 4-20mA field wiring to. The 165 ohm resistor converts the 4-20mA signal into a 0.66v to 3.3v signal to the ADC input pin. The BAT54S IC has two Schottkey diodes to clamp any over/under voltage to ground or 3.3v rail to protect the ADS1115 ADC input. There is also a 50mA self-resetting fuse (shown as a resistor in the schematic :eyeroll:).
 
@@ -51,3 +52,6 @@ The font size of 1 has characters of 6 x 8 pixels with a one pixel baseline spac
 ![Diagram grid of the display layout with soe text boudries](src/displays/SSD1306Display.svg?raw=true)
 
 
+Here is a photo of a very rough and somewhat precarious test setup to make sure everything is working as it should. This was my first actual test after writing most of the code blindly. 
+
+![Photo of first trial test setup](docs/images/Precarious_test_setup_IMG_1652.JPG?raw=false)
