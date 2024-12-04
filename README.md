@@ -55,3 +55,5 @@ The font size of 1 has characters of 6 x 8 pixels with a one pixel baseline spac
 Here is a photo of a very rough and somewhat precarious test setup to make sure everything is working as it should. This was my first actual test after writing most of the code blindly. 
 
 ![Photo of first trial test setup](docs/images/Precarious_test_setup_IMG_1652.JPG?raw=false)
+
+This test setup has a single 1-wire temperature probe, a 4-20mA connected 0-100C RTD temperature transmitter, battery voltage and current and the OPTO_IN bilge pump status input. All worked perfectly except the OLED display didn't. I had gotten an SPI version of the SSD1306 display and modified it for I2C, but it wouldn't go. I have since ordered a proper replacement from Hat Labs.
