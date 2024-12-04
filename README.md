@@ -57,3 +57,16 @@ Here is a photo of a very rough and somewhat precarious test setup to make sure 
 ![Photo of first trial test setup](docs/images/Precarious_test_setup_IMG_1652.JPG?raw=false)
 
 This test setup has a single 1-wire temperature probe, a 4-20mA connected 0-100C RTD temperature transmitter, battery voltage and current and the OPTO_IN bilge pump status input. All worked perfectly except the OLED display didn't. I had gotten an SPI version of the SSD1306 display and modified it for I2C, but it wouldn't go. I have since ordered a proper replacement from Hat Labs.
+
+## Specialized Hardware And Sensors
+As part of my experimentation with all of this, I ended up using some pretty expensive industrial signal conditioner devices to monitor the batteries with. I wanted something with isolation and with 4-20mA outputs for ease of use with my system. The goal in the future will be to replace these devices with dedicated hardware interfaces that don't cost so much and aren't as bulky.
+
+The devices I have were bought much cheaper used on Ebay. They only required a small amount of refurbishing and setting so DIP switches for my application.
+
+### FC-33 Signal Conditioner for reading battery voltage
+[FC-33 Datasheet](https://cdn.automationdirect.com/static/specs/fcsignalconditioners.pdf)
+
+
+### FC-B34 Bipolar Signal Conditioner for reading battery current shunt
+[FC-B34 Datasheet](https://cdn.automationdirect.com/static/specs/fcbiposigcond.pdf)
+
