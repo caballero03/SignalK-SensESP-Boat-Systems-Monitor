@@ -61,12 +61,20 @@ This test setup has a single 1-wire temperature probe, a 4-20mA connected 0-100C
 ## Specialized Hardware And Sensors
 As part of my experimentation with all of this, I ended up using some pretty expensive industrial signal conditioner devices to monitor the batteries with. I wanted something with isolation and with 4-20mA outputs for ease of use with my system. The goal in the future will be to replace these devices with dedicated hardware interfaces that don't cost so much and aren't as bulky.
 
-The devices I have were bought much cheaper used on Ebay. They only required a small amount of refurbishing and setting so DIP switches for my application.
+The devices I have were bought much cheaper used on Ebay. They only required a small amount of refurbishing and setting some DIP switches for my application.
 
 ### FC-33 Signal Conditioner for reading battery voltage
+The FC-33 is configured for 0-10 volt input and 4-20mA output. The input is pre-processed by a simple 2:1 voltage divider and voltage follower op-amp circuit to extend the voltage input range to 0-20 volts.
+
+The analog resolution of this configuration is: 947 μV per ADC step
+
 [FC-33 Datasheet](https://cdn.automationdirect.com/static/specs/fcsignalconditioners.pdf)
 
 
 ### FC-B34 Bipolar Signal Conditioner for reading battery current shunt
+To measure the house battery current, I am using a 300A/100mV current shunt. It will output -100mV to 100mV to represent -300A to 300A of current. I have configured the FC-B34 DIP switches to have an input range of +-100mV and an output of 4-20mA for that same range. This works seamlessly with my ADC inputs on the SysMon device.
+
+This setup will allow the measurement of all charging and discharging of the house battery bank. The analog resolution of this configuration is: 28.4 mA per ADC step.
+
 [FC-B34 Datasheet](https://cdn.automationdirect.com/static/specs/fcbiposigcond.pdf)
 
