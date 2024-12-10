@@ -208,7 +208,7 @@ void setup() {
     // Smooth it out by averaging over a minute with 12 readings (unity scaling at 1.0)
     // ->connect_to(new MovingAverage(12, 1.0, "/outdoor/temp/average"))
     ->connect_to(new SKOutputFloat("environment.outside.temperature", "/outdoor/temp/sk"))
-    ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_3, "K"));
+    ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_2, "K"));
 
   /////////////////////////////////////////////////////////////////////
   // SK path: /environment/inside/[A-Za-z0-9]+/temperature (K) [various, one wire]
@@ -287,7 +287,7 @@ void setup() {
       ->connect_to(new BatteryVoltageInterpreter("/battery/voltage/curve"))
       ->connect_to(new Linear(1.0, 0.0, "/battery/voltage/calibrate"))
       ->connect_to(new SKOutputFloat("electrical.batteries.houseBattery.voltage", "/battery/voltage/sk"))
-      ->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_1, "V")); // Show value sent to SK
+      ->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_2, "V")); // Show value sent to SK
   
   /////////////////////////////////////////////////////////
   // SK Path: /electrical/batteries/<house>/current (I)
@@ -300,7 +300,7 @@ void setup() {
       ->connect_to(new BatteryCurrentInterpreter("/battery/current/curve"))
       ->connect_to(new Linear(1.0, 0.0, "/battery/current/calibrate"))
       ->connect_to(new SKOutputFloat("electrical.batteries.houseBattery.current", "/battery/current/sk"))
-      ->connect_to(new SSD1306Display(display, DATA_ROW_1, DATA_COL_1, "A"));
+      ->connect_to(new SSD1306Display(display, DATA_ROW_1, DATA_COL_2, "A"));
 
   /////////////////////////////////////////////////////////
   // SK Path: /tanks/freshWater/<main>/currentLevel (ratio)
@@ -321,12 +321,13 @@ void setup() {
   // fw_lvl_metadata->units_ = "ratio";
 
   fresh_water_level_input
+      ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_0)) // Raw ADC code value before interp for calibration
       ->connect_to(new WaterTankLevelInterpreter("/freshwater/tank/curve"))
       // Smooth it out by averaging 10 readings over 5 mins (scaling by 1.0)
       ->connect_to(new MovingAverage(10, 1.0, "/freshwater/tank/average"))
       ->connect_to(new Linear(1.0, 0.0, "/freshwater/tank/calibrate"))
       ->connect_to(new SKOutputFloat(sk_freshwater_level_path, "/freshwater/tank/sk"))
-      ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_1, "%"));
+      ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_2, "%"));
 
 
   // Send bilge status to SignalK server, 
@@ -346,6 +347,7 @@ void setup() {
   auto int_to_string_transform = new LambdaTransform<int, String>(int_to_string_function);
 
   bilge_pump_state_input
+        ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_0, "<--State"))
         ->connect_to(int_to_string_transform)
         ->connect_to(new SKOutputString("sensors.bilgePump.status"));
 
