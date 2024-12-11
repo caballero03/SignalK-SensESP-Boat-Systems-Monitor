@@ -2,7 +2,6 @@
 #define SSD1306_DISPLAY_H_
 
 #include "sensesp/transforms/transform.h"
-#include "sensesp/transforms/enable.h"
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -12,7 +11,7 @@
 #define SCREEN_HEIGHT 64
 
 // OLED display rotation
-#define DISPLAY_ROTATION 2
+#define DISPLAY_ROTATION 0 // 2 = upside-down 0,2 are landscape, 1,3 are portrait
 
 // Display data cells 128x64 pixels with font size 1 (6x8 chars) makes 4x8 data cell matrix
 // Could be 16 rows of 10 char cells when rotated 90 degrees

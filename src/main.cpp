@@ -332,7 +332,7 @@ void setup() {
 
   // Send bilge status to SignalK server, 
   // TODO: need to use SK custom metadata??
-  DigitalInputState* bilge_pump_state_input = new DigitalInputState(BILGE_OPTO_IN_PIN, INPUT, 1000, "/keelbilgepump/status/raw");
+  DigitalInputState* bilge_pump_state_input = new DigitalInputState(BILGE_OPTO_IN_PIN, INPUT, 500, "/keelbilgepump/status/raw");
   // bilge_pump_state_input->connect_to(new SKOutputBool("path",));
 
   auto int_to_string_function = [](int input) ->String {
@@ -347,7 +347,7 @@ void setup() {
   auto int_to_string_transform = new LambdaTransform<int, String>(int_to_string_function);
 
   bilge_pump_state_input
-        ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_0, "<--State"))
+        ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_0, "<-BLG"))
         ->connect_to(int_to_string_transform)
         ->connect_to(new SKOutputString("sensors.bilgePump.status"));
 
