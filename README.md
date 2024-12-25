@@ -1,13 +1,13 @@
 # SignalK-SensESP-Boat-Systems-Monitor
 
 ## Intro
-This project is my attempt at creating a boat systems' monitoring device for use with a Signal K server so that the data can be presented on dashboard displays as seen fit.
+This project is my attempt at creating a boat systems' monitoring device for use with a Signal K server so that the boat sensor data can be presented on dashboard displays as seen fit.
 
 The main board is a well-known board from Hat Labs called... TODO: What is it called? LOL
 
 This project uses two small add-on boards from Hat labs to provide four ADC channels each on the I2C bus utilizing the ADS1115 IC. A custom PCB was made to provide four channels of 4-20mA inputs with simple and reasonable input protection to the ADC boards' inputs. This gives the project eight 4-20mA input channels protected by a TVS diode, shunting diodes, inline resistance and a 50mA Polyfuse per channel. See the schematic here of one of the channel input protections:
 
-![Schematic diagram of one of the 4-2mA input processing and protection circuits for the ADC channels](docs/images/4-20mA_schematic_one_channel.png?raw=false)
+![Schematic diagram of one of the 4-20mA input processing and protection circuits for the ADC channels](docs/images/4-20mA_schematic_one_channel.png?raw=false)
 Precarious_test_setup_IMG_1652
 
 The left-side of the schematic shows the screw terminals to connect the 4-20mA field wiring to. The 165 ohm resistor converts the 4-20mA signal into a 0.66v to 3.3v signal to the ADC input pin. The BAT54S IC has two Schottkey diodes to clamp any over/under voltage to ground or 3.3v rail to protect the ADS1115 ADC input. There is also a 50mA self-resetting fuse (shown as a resistor in the schematic :eyeroll:).
@@ -40,7 +40,7 @@ Here is a list of the proposed data points gathered and recorded by the SysMon d
  * bilge pump frequency, status indicator, history plot?
  * Battery voltage
  * Battery current
- * Alternator charge current (CSLF5HE)
+ * Alternator charge current
 
 ## Debug Display
 The SH-ESP32 board has a convienient I2C connector that can be used for a small OLED display sold by Hat Labs. This little display has been included in this project to show debug data and raw data readings for testing and calibration. 
@@ -49,7 +49,7 @@ The display has a very basic organization whereas the screen of 128 x 64 pixels 
 
 The font size of 1 has characters of 6 x 8 pixels with a one pixel baseline spacing. Seen below is an image of the text cells and some text characters for comparison.
 
-![Diagram grid of the display layout with soe text boudries](src/displays/SSD1306Display.svg?raw=true)
+![Diagram grid of the display layout with some text boundries](src/displays/SSD1306Display.svg?raw=true)
 
 
 Here is a photo of a very rough and somewhat precarious test setup to make sure everything is working as it should. This was my first actual test after writing most of the code blindly. 
@@ -74,7 +74,7 @@ The analog resolution of this configuration is: 947 μV per ADC step
 ### FC-B34 Bipolar Signal Conditioner for reading battery current shunt
 To measure the house battery current, I am using a 300A/100mV current shunt. It will output -100mV to 100mV to represent -300A to 300A of current. I have configured the FC-B34 DIP switches to have an input range of +-100mV and an output of 4-20mA for that same range. This works seamlessly with my ADC inputs on the SysMon device.
 
-This setup will allow the measurement of all charging and discharging of the house battery bank. The analog resolution of this configuration is: 28.4 mA per ADC step.
+This setup will allow the measurement of all charging and discharging of the house battery bank. The analog resolution of this configuration is: 28.4 mA per ADC step through the entire -300 to 300 amp range. The ADS1115 ADC may make it possible to perform some kind of auto-ranging using PGA settings to get better resolution. Although, I think 28.4 mA per ADC step should suffice for most things on a boat.
 
 [FC-B34 Datasheet](https://cdn.automationdirect.com/static/specs/fcbiposigcond.pdf)
 

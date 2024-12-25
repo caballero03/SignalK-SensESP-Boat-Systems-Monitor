@@ -26,6 +26,7 @@ class DieselTankLevelInterpreter : public CurveInterpolator {
     // addSample(CurveInterpolator::Sample(knownADCValue, knownLevel));
     add_sample(CurveInterpolator::Sample(0, 0.00));
     add_sample(CurveInterpolator::Sample(5280, 0.00));
+    // Full range of 4-20mA input
     add_sample(CurveInterpolator::Sample(26400, 100.0));
     add_sample(CurveInterpolator::Sample(32767, 100.0));
   }
@@ -41,8 +42,9 @@ class OilPressureInterpreter : public CurveInterpolator {
     // addSample(CurveInterpolator::Sample(knownADCValue, knownPa));
     add_sample(CurveInterpolator::Sample(0, 0.00));
     add_sample(CurveInterpolator::Sample(5280, 0.00));
-    add_sample(CurveInterpolator::Sample(26400, 689475.729));
-    add_sample(CurveInterpolator::Sample(32767, 689475.729));
+    // Full range of 4-20mA input
+    add_sample(CurveInterpolator::Sample(26400, 689475.72931783)); // Too much precision? LOL
+    add_sample(CurveInterpolator::Sample(32767, 689475.72931783));
   }
 };
 

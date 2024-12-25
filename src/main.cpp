@@ -184,7 +184,7 @@ void setup() {
   display->setTextSize(2); // Text size. 1 is default 6x8, 2 is 12x16, 3 is 18x24, etc
   display->setTextColor(SSD1306_WHITE);
   display->setCursor(0, 0);
-  display->printf("Host: %s", sensesp_app->get_hostname().c_str());
+  display->printf("Hostname: %s\n", sensesp_app->get_hostname().c_str());
   display->display();
 
   // Let's read the sensor(s) every 1000 ms.
