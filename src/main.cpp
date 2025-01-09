@@ -168,7 +168,7 @@ void setup() {
   }
 
   /////////////////////////////////////////////////////////////
-  // Set up the little OLED display SSD1306 display with a 
+  // Set up the little OLED display. SSD1306 display with a 
   // 0.96" diagonal viewing area and 128x64 pixels, monochrome
   // 
   display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, i2c, -1);
@@ -181,7 +181,7 @@ void setup() {
 
   display->setRotation(DISPLAY_ROTATION);
   display->clearDisplay();
-  display->setTextSize(2); // Text size. 1 is default 6x8, 2 is 12x16, 3 is 18x24, etc
+  display->setTextSize(1); // Text size. 1 is default 6x8, 2 is 12x16, 3 is 18x24, etc
   display->setTextColor(SSD1306_WHITE);
   display->setCursor(0, 0);
   display->printf("Hostname: %s\n", sensesp_app->get_hostname().c_str());

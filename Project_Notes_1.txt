@@ -266,6 +266,7 @@ Systems/Domestic
  1) Fresh water tank level
  2) Fresh water tank temperature
  5) Cooler/fridge/freezer temperature
+ #) Time, Date, DOW, etc.
  
 Systems/Engine
 --------------------
@@ -277,7 +278,7 @@ Systems/Engine
  4) bilge pump frequency, status indicator, plot?
  #) Battery voltage
  #) Battery current
- #) Alternator charge current (CSLF5HE)
+ #) Alternator charge current (CSLF5HE <---nope)
  
 Position/Attitude/Navigation
 --------------------
@@ -288,6 +289,33 @@ Position/Attitude/Navigation
  #) depth/DBT/DBK
  #) speed/SOG
  
+
+===================================
+CYD_SK_SenESP Screens
+----------------------
+
+	Engine Systems
+	--------------
+		- Raw water temperature
+		- Engine oil pressure
+		- Engine coolant temperature
+		- yadda, yadda...
+
+
+	Domestic Systems
+	----------------
+		- Water Level
+		- etc.
+
+
+	Environment(/Weather?)
+	----------------------
+
+
+	Running/Underway
+	----------------
+		- Do we really need this display to do this? What if the HDMI screen gave out? Spare?
+		- Could be a good backup screen, not a chartplotter though.
 
 
 
