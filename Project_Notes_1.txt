@@ -320,4 +320,84 @@ CYD_SK_SenESP Screens
 
 
 
+// use first channel of 16 channels (started from zero)
+#define LEDC_CHANNEL_0     0
+
+// use 12 bit precission for LEDC timer
+#define LEDC_TIMER_12_BIT  12
+
+// use 5000 Hz as a LEDC base frequency
+#define LEDC_BASE_FREQ     5000
+
+// Setting up the LEDC and configuring the Back light pin
+  // NOTE: this needs to be done after tft.init()
+#if ESP_IDF_VERSION_MAJOR == 5
+  ledcAttach(LCD_BACK_LIGHT_PIN, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
+#else
+  ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
+  ledcAttachPin(LCD_BACK_LIGHT_PIN, LEDC_CHANNEL_0);
+#endif
+
+// write max duty to LEDC
+ledcWrite(LEDC_CHANNEL_0, 4095);
+        
+        
+%a %b %d %Y %T %Z
+
+_%a%b%d%Y%T%Z
+
+
+Special characters
+===========================
+± 0xC2 0xB1 (c2b1)
+
+° 0xC2 0xB0 (c2b0)
+
+
+
+alt(240): ≡ ** menu button **
+alt(0133): … ** menu button***
+alt(241): ±
+alt(246): ÷
+alt(247): ≈
+alt(251): √
+
+C33636 red
+36C34E green
+
+
+
+Found address: 32 (0x20) PCF8574
+Found address: 64 (0x40) PHT sensor
+Found address: 118 (0x76) PHT calibration EEPROM
+
+/*!
+ *  I2C ADDRESS/BITS/SETTINGS. The MS8607 uses two different I2C addresses
+ */
+#define MS8607_PT_ADDRESS                                                      \
+  0x76 ///< The pressure and temperature I2C address for the sensor
+#define MS8607_HUM_ADDRESS                                                     \
+  0x40 ///< The default pressure and temperature I2C address for the sensor
+
+ADS1115 I2C addresses
+======================
+    I2C ADDRESS/BITS 
+      Tie ADDR pin to:
+      GND -- 1001 000 = 0x48
+      VDD -- 1001 001 = 0x49
+      SDA -- 1001 010 = 0x4a // Future expansion
+      SCL -- 1001 011 = 0x4b // Future expansion
+
+
+SysMon I2C addresses used
+0x20 - I/O expander
+0x3C - OLED
+0x40 - PHT
+0x76 - PHT
+0x48 - ADC
+0x49 - ADC
+
+
+
+982 hPa to 1049 hPa -- barometric pressure range
 

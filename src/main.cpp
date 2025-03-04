@@ -19,6 +19,8 @@
 #include <Adafruit_ADS1X15.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_MS8607.h>
+#include <Adafruit_Sensor.h>
 
 #include "displays/SSD1306Display.h"
 
@@ -43,7 +45,7 @@ using namespace sensesp::onewire;
 // Serial port pins used for the CAN bus on the SH-ESP32. 
 // When disabled, can be used by other hardware such as the Wit IMU module
 #define RXD1 34
-#define TXD1 32 // Probably not going to Tx to the Wit IMU
+#define TXD1 32 // Tx to the WitMotion HWT901B-TTL IMU
 
 // SH-ESP32 on-board, blue LED (GPIO2)
 #define STATUS_LED 2
@@ -79,9 +81,42 @@ Adafruit_ADS1115 ads1;
 // I2C bus
 TwoWire* i2c;
 
+// Temperature, pressure and humidity sensor
+Adafruit_MS8607 ms8607;
+// Adafruit_Sensor *pressure_sensor; // = ms8607.getPressureSensor();
+// Adafruit_Sensor *temp_sensor; // = ms8607.getTemperatureSensor();
+// Adafruit_Sensor *humidity_sensor; // = ms8607.getHumiditySensor();
+
 // Tiny 128x64 pixel, 0.96" OLED display
 Adafruit_SSD1306* display;
 #define SSD1306_I2C_ADDR 0x3C
+
+
+void I2C_Scanner (TwoWire *i2c)
+{
+  ESP_LOGD(__FILENAME__, "I2C scanner. Scanning ...");
+
+  byte count = 0;
+
+  // Wire.begin();
+  for (byte i = 8; i < 120; i++)
+  {
+    i2c->beginTransmission (i);          // Begin I2C transmission Address (i)
+    if (i2c->endTransmission () == 0)  // Receive 0 = success (ACK response) 
+    {
+      // Serial.print ("Found address: ");
+      // Serial.print (i, DEC);
+      // Serial.print (" (0x");
+      // Serial.print (i, HEX);     // PCF8574 7 bit address
+      ESP_LOGD(__FILENAME__, "0x%02X\n", (uint16_t)i);
+      // Serial.println (")");
+      count++;
+    }
+  }
+  // Serial.print ("Found ");      
+  // Serial.print (count, DEC);        // numbers of devices
+  // Serial.println (" device(s).");
+}
 
 //////////////////////////////////////////////////////////////////////
 // Define callbacks for the ADS1115 ADC boards
@@ -114,7 +149,47 @@ int16_t reserved_read_callback() {
 
 int16_t debug_read_callback() { 
   // Return a value representing a center reading (12mA in the 4-20mA range)
-  return 15840; }
+  return 15840; 
+}
+
+//////////////////////////////////////////////////////////////////////
+// Define callbacks for PHT sensor
+//////////////////////////////////////////////////////////////////////
+float pressure_read_callback() { 
+  sensors_event_t pressure;
+
+  Adafruit_Sensor *pressure_sensor = ms8607.getPressureSensor();
+
+  pressure_sensor->getEvent(&pressure);
+
+  // Return barometric pressure in Pascals
+  return pressure.pressure * 100.0f; // hPa to Pa (1 hPa == 1 mBar)
+}
+
+float humidity_read_callback() { 
+  sensors_event_t humidity;
+
+  Adafruit_Sensor *humidity_sensor = ms8607.getHumiditySensor();
+
+  humidity_sensor->getEvent(&humidity);
+
+  // Return cabin relative humidity in percent
+  return humidity.relative_humidity; // Percent
+}
+
+float temperature_read_callback() { 
+  // sensors_event_t temp;
+
+  // Adafruit_Sensor *temp_sensor = ms8607.getTemperatureSensor();
+
+  // temp_sensor->getEvent(&temp);
+
+  sensors_event_t temp, pressure, humidity;
+  ms8607.getEvent(&pressure, &temp, &humidity);
+
+  // Return cabin temperature in Kelvin
+  return temp.temperature + 273.15f; // Degrees C to K
+}
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////////////// SETUP SETUP SETUP ////////////////////////////
@@ -129,7 +204,7 @@ void setup() {
   // sensesp_app = builder.set_hostname("gwtw-sysmon")
   sensesp_app = builder.set_hostname("sensESP")
                     // ->set_sk_server("192.168.0.152", 3000)
-                    ->set_wifi_client("Franklin T10 6907", "supersecretpassword")
+                    // ->set_wifi_client("Franklin T10 6907", "supersecretpassword")
                     ->get_app();
 
   // Set up Dallas one-wire bus
@@ -138,6 +213,9 @@ void setup() {
   // initialize the I2C bus
   i2c = new TwoWire(0);
   i2c->begin(SDA_PIN, SCL_PIN);
+
+  // I2C_Scanner(i2c);
+  // while (1);
 
   // The ADC input range (or gain) can be changed via the following
   // functions, but be careful never to exceed VDD +0.3V max, or to
@@ -166,6 +244,31 @@ void setup() {
     Serial.println("Failed to initialize ads1.");
     //while (1);
   }
+
+  /////////////////////////////////////////////////////////////
+  // ms8607 temperature, barometric pressure and humidity 
+  // sensor
+
+  if (!ms8607.begin(i2c)) {
+    // Serial.println("Failed to find MS8607 chip");
+    ESP_LOGW(
+      __FILENAME__,
+      "Failed to find MS8607 chip");
+    // while (1) { delay(10); }
+  } else {
+    Serial.println("MS8607 PHT Found!");
+    ESP_LOGD(
+      __FILENAME__,
+      "MS8607 PHT Found!");
+
+    // pressure_sensor = ms8607.getPressureSensor();
+    // temp_sensor = ms8607.getTemperatureSensor();
+    // humidity_sensor = ms8607.getHumiditySensor();
+  }
+
+  // Override defaults if needed
+  // ms8607.setHumidityResolution(MS8607_HUMIDITY_RESOLUTION_OSR_8b); // Default: MS8607_HUMIDITY_RESOLUTION_OSR_12b
+  // ms8607.setPressureResolution(MS8607_PRESSURE_RESOLUTION_OSR_4096); // Default: MS8607_PRESSURE_RESOLUTION_OSR_4096
 
   /////////////////////////////////////////////////////////////
   // Set up the little OLED display. SSD1306 display with a 
@@ -321,7 +424,7 @@ void setup() {
   // fw_lvl_metadata->units_ = "ratio";
 
   fresh_water_level_input
-      ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_0)) // Raw ADC code value before interp for calibration
+      ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_0)) // Raw ADC code value for interpolation calibration process
       ->connect_to(new WaterTankLevelInterpreter("/freshwater/tank/curve"))
       // Smooth it out by averaging 10 readings over 5 mins (scaling by 1.0)
       ->connect_to(new MovingAverage(10, 1.0, "/freshwater/tank/average"))
@@ -330,6 +433,50 @@ void setup() {
       ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_2, "%"));
 
 
+  //////////////////////////////////////////////////////////////
+  // Read values from the pressure, humidity and temperature
+  // sensors
+
+  /////////////////////////////////////////////////////////
+  // SK Path: /environment/inside/cabin/temperature (K)
+  // 
+  auto* cabin_temp_input =
+    new RepeatSensor<float>(5000, temperature_read_callback);
+
+  cabin_temp_input
+    // Smooth it out by averaging 10 readings (scaling by 1.0)
+    // ->connect_to(new MovingAverage(10, 1.0, "/cabin/temp/average"))
+    ->connect_to(new Linear(1.0, 0.0, "/cabin/temp/calibrate"))
+    ->connect_to(new SKOutputFloat("environment.inside.cabin.temperature", "/cabin/temp/sk"));
+    // ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "K"));
+
+  /////////////////////////////////////////////////////////
+  // SK Path: /environment/inside/cabin/relativeHumidity (ratio)
+  // 
+  auto* cabin_humidity_input =
+    new RepeatSensor<float>(10000, humidity_read_callback);
+
+  cabin_humidity_input
+    // Smooth it out by averaging 10 readings (scaling by 1.0)
+    // ->connect_to(new MovingAverage(10, 1.0, "/cabin/humidity/average"))
+    ->connect_to(new Linear(1.0, 0.0, "/cabin/humidity/calibrate"))
+    ->connect_to(new SKOutputFloat("environment.inside.cabin.relativeHumidity", "/cabin/humidity/sk"));
+    // ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "%"));
+
+  /////////////////////////////////////////////////////////
+  // SK Path: /environment/inside/cabin/pressure (Pa)
+  // 
+  auto* barometric_pressure_input =
+    new RepeatSensor<float>(30000, pressure_read_callback);
+
+    barometric_pressure_input
+    // Smooth it out by averaging 10 readings (scaling by 1.0)
+    // ->connect_to(new MovingAverage(10, 1.0, "/cabin/pressure/average"))
+    ->connect_to(new Linear(1.0, 0.0, "/cabin/pressure/calibrate"))
+    ->connect_to(new SKOutputFloat("environment.inside.cabin.pressure", "/cabin/pressure/sk"));
+    // ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "Pa"));
+
+  ///////////////////////////////////////////////////////////
   // Send bilge status to SignalK server, 
   // TODO: need to use SK custom metadata??
   DigitalInputState* bilge_pump_state_input = new DigitalInputState(BILGE_OPTO_IN_PIN, INPUT, 500, "/keelbilgepump/status/raw");
