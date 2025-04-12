@@ -13,6 +13,7 @@
 #include "sensesp/transforms/curveinterpolator.h"
 #include "sensesp/transforms/voltagedivider.h"
 #include "sensesp/transforms/moving_average.h"
+#include "sensesp/transforms/angle_correction.h"
 #include "sensesp_app_builder.h"
 #include "sensesp_onewire/onewire_temperature.h"
 
@@ -21,6 +22,9 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_MS8607.h>
 #include <Adafruit_Sensor.h>
+
+#include <REG.h>
+#include <wit_c_sdk.h>
 
 #include "displays/SSD1306Display.h"
 
@@ -33,22 +37,22 @@ using namespace sensesp;
 using namespace sensesp::onewire;
 
 // I2C config for SH-ESP32
-#define SDA_PIN 16
-#define SCL_PIN 17
+#define SDA_PIN             16
+#define SCL_PIN             17
 
 // One-wire data line is connected to pin 4 on the SH-ESP32
-#define ONEWIRE_PIN 4
+#define ONEWIRE_PIN         4
 
 // Opto-isolated input pin for bilge pump status
-#define BILGE_OPTO_IN_PIN 35
+#define BILGE_OPTO_IN_PIN   35
 
 // Serial port pins used for the CAN bus on the SH-ESP32. 
 // When disabled, can be used by other hardware such as the Wit IMU module
-#define RXD1 34
-#define TXD1 32 // Tx to the WitMotion HWT901B-TTL IMU
+#define RXD1                34
+#define TXD1                32 // Tx to the WitMotion HWT901B-TTL IMU
 
 // SH-ESP32 on-board, blue LED (GPIO2)
-#define STATUS_LED 2
+#define STATUS_LED          2
 
 // Declare the two ADS1115 IC's
 Adafruit_ADS1115 ads0;
@@ -67,29 +71,42 @@ Adafruit_ADS1115 ads1;
 /*=========================================================================*/
 
 // ADS1115_0 channels
-#define ENGINE_OIL_PRESSURE_CHANNEL 0
-#define ENGINE_COOLANT_TEMPERATURE_CHANNEL 1
-#define RAW_WATER_TEMPERATURE_CHANNEL 2
-#define DIESEL_TANK_FUEL_LEVEL_CHANNEL 3
+#define ENGINE_OIL_PRESSURE_CHANNEL         0
+#define ENGINE_COOLANT_TEMPERATURE_CHANNEL  1
+#define RAW_WATER_TEMPERATURE_CHANNEL       2
+#define DIESEL_TANK_FUEL_LEVEL_CHANNEL      3
 
 // ADS1115_1 channels
-#define BATTERY_CURRENT_CHANNEL 0
-#define BATTERY_VOLTAGE_CHANNEL 1
-#define FRESH_WATER_TANK_LEVEL_CHANNEL 2
-#define RESERVED_CHANNEL 3
+#define BATTERY_CURRENT_CHANNEL         0
+#define BATTERY_VOLTAGE_CHANNEL         1
+#define FRESH_WATER_TANK_LEVEL_CHANNEL  2
+#define RESERVED_CHANNEL                3
 
 // I2C bus
 TwoWire* i2c;
 
 // Temperature, pressure and humidity sensor
 Adafruit_MS8607 ms8607;
-// Adafruit_Sensor *pressure_sensor; // = ms8607.getPressureSensor();
-// Adafruit_Sensor *temp_sensor; // = ms8607.getTemperatureSensor();
-// Adafruit_Sensor *humidity_sensor; // = ms8607.getHumiditySensor();
 
 // Tiny 128x64 pixel, 0.96" OLED display
 Adafruit_SSD1306* display;
-#define SSD1306_I2C_ADDR 0x3C
+#define SSD1306_I2C_ADDR    0x3C
+
+// Simplify converting degrees to radians
+#define FACTRAD             0.0174532925199f     // * pi/180
+
+#define ACC_UPDATE		      0x01
+#define GYRO_UPDATE		      0x02
+#define ANGLE_UPDATE	      0x04
+#define MAG_UPDATE		      0x08
+#define PRESSURE_UPDATE     0x10
+#define MAG_HEADING_UPDATE  0x20
+#define READ_UPDATE		      0x80
+static volatile char s_cDataUpdate = 0, s_cCmd = 0xff; 
+
+static void SensorUartSend(uint8_t *p_data, uint32_t uiSize);
+static void SensorDataUpdata(uint32_t uiReg, uint32_t uiRegNum);
+static void Delayms(uint16_t ucMs);
 
 
 void I2C_Scanner (TwoWire *i2c)
@@ -98,24 +115,15 @@ void I2C_Scanner (TwoWire *i2c)
 
   byte count = 0;
 
-  // Wire.begin();
   for (byte i = 8; i < 120; i++)
   {
     i2c->beginTransmission (i);          // Begin I2C transmission Address (i)
     if (i2c->endTransmission () == 0)  // Receive 0 = success (ACK response) 
     {
-      // Serial.print ("Found address: ");
-      // Serial.print (i, DEC);
-      // Serial.print (" (0x");
-      // Serial.print (i, HEX);     // PCF8574 7 bit address
       ESP_LOGD(__FILENAME__, "0x%02X\n", (uint16_t)i);
-      // Serial.println (")");
       count++;
     }
   }
-  // Serial.print ("Found ");      
-  // Serial.print (count, DEC);        // numbers of devices
-  // Serial.println (" device(s).");
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -190,6 +198,54 @@ float temperature_read_callback() {
   // Return cabin temperature in Kelvin
   return temp.temperature + 273.15f; // Degrees C to K
 }
+
+//////////////////////////////////////////////////////////////////////
+// Define callbacks for WitMotion WT901B IMU sensor
+//////////////////////////////////////////////////////////////////////
+
+String attitude_read_callback() {
+  float fAngle[3];
+  JsonDocument jsonDoc;
+  String sOutput;
+
+  for(int i = 0; i < 3; i++)
+  {
+    fAngle[i] = sReg[Roll+i] / 32768.0f * 180.0f;
+  }
+
+  if(s_cDataUpdate & ANGLE_UPDATE)
+  {
+    // Read the angles and convert to radians
+    jsonDoc["roll"] = fAngle[0] * FACTRAD; // roll
+    jsonDoc["pitch"] = fAngle[1] * FACTRAD; // pitch
+    jsonDoc["yaw"] = fAngle[2] * FACTRAD; // yaw
+    
+    serializeJson(jsonDoc, sOutput);
+    
+    s_cDataUpdate &= ~ANGLE_UPDATE;
+  }
+
+  return sOutput;
+}
+
+float compass_read_callback() { 
+  if(s_cDataUpdate & MAG_HEADING_UPDATE) {
+    s_cDataUpdate &= ~MAG_HEADING_UPDATE;
+  }
+
+  // This actually reads the yaw value of the angle record 
+  // Don't convert to radians here because we need to do an angle correction in degrees first
+  return (sReg[Yaw] / 32768.0f) * 180.0f;
+}
+
+uint32_t pressure_read_callback2() {
+  if(s_cDataUpdate & PRESSURE_UPDATE) {
+    s_cDataUpdate &= ~PRESSURE_UPDATE;
+  }
+
+  return (sReg[PressureH] << 16) | sReg[PressureL];
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////////////// SETUP SETUP SETUP ////////////////////////////
@@ -469,12 +525,57 @@ void setup() {
   auto* barometric_pressure_input =
     new RepeatSensor<float>(30000, pressure_read_callback);
 
-    barometric_pressure_input
+  barometric_pressure_input
     // Smooth it out by averaging 10 readings (scaling by 1.0)
     // ->connect_to(new MovingAverage(10, 1.0, "/cabin/pressure/average"))
     ->connect_to(new Linear(1.0, 0.0, "/cabin/pressure/calibrate"))
     ->connect_to(new SKOutputFloat("environment.inside.cabin.pressure", "/cabin/pressure/sk"));
     // ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "Pa"));
+
+  /////////////////////////////////////////////////////////
+  // SK Path: /environment/inside/cabin/pressure (Pa)
+  // 
+  auto* barometric_pressure_input2 =
+    new RepeatSensor<uint32_t>(1000, pressure_read_callback2);
+
+  barometric_pressure_input2
+    // Smooth it out by averaging 10 readings (scaling by 1.0)
+    // ->connect_to(new MovingAverage(10, 1.0, "/cabin/pressure/average"))
+    // ->connect_to(new Linear(1.0, 0.0, "/cabin/pressure2/calibrate"))
+    ->connect_to(new SKOutputInt("environment.inside.cabin.pressure2", "/cabin/pressure2/sk"));
+    // ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "Pa"));
+
+  /////////////////////////////////////////////////////////
+  // SK Path: /navigation/headingMagnetic (radians)
+  // 
+  auto* compass_heading_input =
+    new RepeatSensor<float>(200, compass_read_callback); // Read 5 times per second
+
+  compass_heading_input
+    ->connect_to(new AngleCorrection(0.0f, 0.0f, "/heading/magnetic/correction")) // TODO: Make a config item for this
+    ->connect_to(new Linear(FACTRAD, 0.0, "/heading/magnetic/radians"))
+    ->connect_to(new SKOutputFloat("navigation.headingMagnetic", "/heading/magnetic/sk"));
+    // ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "Pa"));
+
+  /////////////////////////////////////////////////////////
+  // SK Path: /navigation/attitude (json Object)
+  /*
+    {
+      "roll":0.123456,  (radians)
+      "pitch":-0.123456, (radians)
+      "yaw":null
+    }
+  */
+  auto* attitude_input =
+    new RepeatSensor<String>(500, attitude_read_callback); // Read 2 times per second
+
+  attitude_input
+    ->connect_to(new LambdaConsumer<String>([](String input) {
+      ESP_LOGD("WitMotion", "JSONified attitude output: %s", input.c_str());
+    }));
+
+  attitude_input
+    ->connect_to(new SKOutputRawJson("navigation.attitude", "/navigation/attitude/sk"));
 
   ///////////////////////////////////////////////////////////
   // Send bilge status to SignalK server, 
@@ -502,19 +603,23 @@ void setup() {
 
 
   // Setup a second serial port to read WitMotion IMU device at 9600 baud
-  // Serial1.begin(9600, SERIAL_8N1, RXD1, TXD1);
-
-  // char buf[2048];
-  // Serial1.read(buf, 1024); // Test read
-
-  // Spit it out the debug serial? This will likely print garbage...
-  // Need to decode the binary data. Hex dump?
-  // Serial.println(buf, HEX);
-  // Serial.println(buf);
+  Serial1.begin(9600, SERIAL_8N1, RXD1, TXD1);
 
   /////////////////////////////////////////////////////////////////////
   // /navigation/attitude (object: roll(rad),pitch(rad),yaw(rad))
   // /navigation/headingMagnetic (rad)
+
+  // Initialize the Witmotion SDK
+  WitInit(WIT_PROTOCOL_NORMAL, 0x50);
+  WitSerialWriteRegister(SensorUartSend);
+	WitRegisterCallBack(SensorDataUpdata);
+  WitDelayMsRegister(Delayms);
+
+  // Process incoming bytes from the serial port one by one with a state machine
+  auto eventLoop = SensESPBaseApp::get_event_loop();
+  eventLoop->onAvailable(Serial1, [&eventLoop] () {
+    WitSerialDataIn(Serial1.read());
+  });
 
 
   // Monitor engine status? Engine hour tracking?
@@ -528,4 +633,48 @@ void loop() {
   // acquired once. Saves a few function calls per loop iteration.
   static auto event_loop = SensESPBaseApp::get_event_loop();
   event_loop->tick();
+}
+
+////////////////////////////////////////////////////////////////
+
+static void SensorUartSend(uint8_t *p_data, uint32_t uiSize)
+{
+  Serial1.write(p_data, uiSize);
+  Serial1.flush();
+}
+
+static void Delayms(uint16_t ucMs)
+{
+  delay(ucMs);
+}
+
+static void SensorDataUpdata(uint32_t uiReg, uint32_t uiRegNum)
+{
+  int i;
+
+  for(i = 0; i < uiRegNum; i++) {
+    switch(uiReg) {
+      case AZ:
+        s_cDataUpdate |= ACC_UPDATE;
+        break;
+      case GZ:
+        s_cDataUpdate |= GYRO_UPDATE;
+        break;
+      case HZ:
+        s_cDataUpdate |= MAG_UPDATE;
+        break;
+      case Yaw:
+        s_cDataUpdate |= ANGLE_UPDATE;
+        s_cDataUpdate |= MAG_HEADING_UPDATE;
+        break;
+      case HeightH:
+        s_cDataUpdate |= PRESSURE_UPDATE;
+        break;
+      default:
+        s_cDataUpdate |= READ_UPDATE;
+        break;
+    }
+
+    uiReg++;
+  }
 }

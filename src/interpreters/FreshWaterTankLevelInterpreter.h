@@ -32,7 +32,7 @@ class WaterTankLevelInterpreter : public CurveInterpolator {
     add_sample(CurveInterpolator::Sample(6688, 12.50));
     add_sample(CurveInterpolator::Sample(7392, 18.75));
     add_sample(CurveInterpolator::Sample(8096, 25.00));
-    add_sample(CurveInterpolator::Sample(8800, 31.25));
+    add_sample(CurveInterpolator::Sample(8800, 31.25));         // TODO: Change this to a 0.0 to 1.0 ratio
     add_sample(CurveInterpolator::Sample(9504, 37.50));
     add_sample(CurveInterpolator::Sample(10208, 43.75));
     add_sample(CurveInterpolator::Sample(10912, 50.00));

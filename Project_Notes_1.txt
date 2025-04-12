@@ -394,10 +394,12 @@ SysMon I2C addresses used
 0x3C - OLED
 0x40 - PHT
 0x76 - PHT
-0x48 - ADC
-0x49 - ADC
+0x48 - ADC0
+0x49 - ADC1
 
 
 
 982 hPa to 1049 hPa -- barometric pressure range
+
+
 

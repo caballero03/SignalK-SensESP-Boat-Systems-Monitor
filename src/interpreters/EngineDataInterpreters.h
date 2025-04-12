@@ -25,7 +25,7 @@ class DieselTankLevelInterpreter : public CurveInterpolator {
     clear_samples();
     // addSample(CurveInterpolator::Sample(knownADCValue, knownLevel));
     add_sample(CurveInterpolator::Sample(0, 0.00));
-    add_sample(CurveInterpolator::Sample(5280, 0.00));
+    add_sample(CurveInterpolator::Sample(5280, 0.00));         // TODO: Change this to a 0.0 to 1.0 ratio
     // Full range of 4-20mA input
     add_sample(CurveInterpolator::Sample(26400, 100.0));
     add_sample(CurveInterpolator::Sample(32767, 100.0));
