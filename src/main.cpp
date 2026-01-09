@@ -27,6 +27,7 @@
 #include <wit_c_sdk.h>
 
 #include "displays/SSD1306Display.h"
+#include "transforms/kelvintofahrenheit.h"
 
 #include "interpreters/FreshWaterTankLevelInterpreter.h"
 #include "interpreters/BatteryMonitorInterpreters.h"
@@ -134,7 +135,8 @@ int16_t oil_pressure_read_callback() {
   return ads0.readADC_SingleEnded(ENGINE_OIL_PRESSURE_CHANNEL); }
 
 int16_t engine_temp_read_callback() { 
-  return ads0.readADC_SingleEnded(ENGINE_COOLANT_TEMPERATURE_CHANNEL); }
+  // return ads0.readADC_SingleEnded(ENGINE_COOLANT_TEMPERATURE_CHANNEL); }
+  return ads1.readADC_SingleEnded(RESERVED_CHANNEL); }
 
 int16_t raw_water_temp_read_callback() { 
   return ads0.readADC_SingleEnded(RAW_WATER_TEMPERATURE_CHANNEL); }
@@ -208,42 +210,57 @@ String attitude_read_callback() {
   JsonDocument jsonDoc;
   String sOutput;
 
+  if(s_cDataUpdate & ANGLE_UPDATE) {
+    s_cDataUpdate &= ~ANGLE_UPDATE;
+  }
+
+  /*
+    Gather up roll, pitch and yaw attitude data
+
+  */
   for(int i = 0; i < 3; i++)
   {
     fAngle[i] = sReg[Roll+i] / 32768.0f * 180.0f;
   }
-
-  if(s_cDataUpdate & ANGLE_UPDATE)
-  {
-    // Read the angles and convert to radians
-    jsonDoc["roll"] = fAngle[0] * FACTRAD; // roll
-    jsonDoc["pitch"] = fAngle[1] * FACTRAD; // pitch
-    jsonDoc["yaw"] = fAngle[2] * FACTRAD; // yaw
-    
-    serializeJson(jsonDoc, sOutput);
-    
-    s_cDataUpdate &= ~ANGLE_UPDATE;
-  }
-
+  
+  // Construct a JSON doc and convert values to radians
+  jsonDoc["roll"] = fAngle[0] * FACTRAD; // roll
+  jsonDoc["pitch"] = fAngle[1] * FACTRAD; // pitch
+  jsonDoc["yaw"] = fAngle[2] * FACTRAD; // yaw
+  
+  serializeJson(jsonDoc, sOutput);
+  
   return sOutput;
 }
 
+/*
+  
+*/
 float compass_read_callback() { 
   if(s_cDataUpdate & MAG_HEADING_UPDATE) {
     s_cDataUpdate &= ~MAG_HEADING_UPDATE;
   }
 
-  // This actually reads the yaw value of the angle record 
-  // Don't convert to radians here because we need to do an angle correction in degrees first
-  return (sReg[Yaw] / 32768.0f) * 180.0f;
+  // This actually reads the yaw value of the angle record (and converts it to radians)
+  return ((sReg[Roll+2] / 32768.0f) * 180.0f) * FACTRAD;
 }
 
+/*
+  This function should return a positive integer value for atmospheric 
+  pressure. Negative values would indicate that the earth has imploded 
+  and everything is dead.
+*/
 uint32_t pressure_read_callback2() {
   if(s_cDataUpdate & PRESSURE_UPDATE) {
     s_cDataUpdate &= ~PRESSURE_UPDATE;
   }
 
-  return (sReg[PressureH] << 16) | sReg[PressureL];
+  // This was pretty fussy for some reason. The PressreL value always came in as 
+  // a 64 bit number like: 0xffff8f66 instead of just:0x8f66
+  // Anyway, hence the binary masking and type casting here
+  uint32_t retPressure = ((uint16_t)sReg[PressureH] << 16) | ((uint16_t)sReg[PressureL] & 0xffff);
+
+  return (uint32_t)retPressure;
 }
 
 
@@ -367,7 +384,8 @@ void setup() {
     // Smooth it out by averaging over a minute with 12 readings (unity scaling at 1.0)
     // ->connect_to(new MovingAverage(12, 1.0, "/outdoor/temp/average"))
     ->connect_to(new SKOutputFloat("environment.outside.temperature", "/outdoor/temp/sk"))
-    ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_2, "K"));
+    ->connect_to(new KelvinToFahrenheit())
+    ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_2, "F"));
 
   /////////////////////////////////////////////////////////////////////
   // SK path: /environment/inside/[A-Za-z0-9]+/temperature (K) [various, one wire]
@@ -385,12 +403,14 @@ void setup() {
       new RepeatSensor<int16_t>(5000, engine_temp_read_callback); //engine_temp_read_callback (debug_read_callback = 50C)
 
   engine_water_temp_input
+      ->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_0)) // Display raw ADC value
       ->connect_to(new RTD_Minus50To150C_TempInterpreter("/engine/temp/curve"))
       // Smooth it out by averaging 10 readings (scaling by 1.0)
       // ->connect_to(new MovingAverage(10, 1.0, "/engine/temp/average"))
       ->connect_to(new Linear(1.0, 0.0, "/engine/temp/calibrate"))
       ->connect_to(new SKOutputFloat("propulsion.main.temperature", "/engine/temp/sk"))
-      ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "K"));
+      ->connect_to(new KelvinToFahrenheit())
+      ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "F"));
 
   /////////////////////////////////////////////////////////
   // SK Path: /propulsion/<main>/oilPressure (Pa)
@@ -431,7 +451,8 @@ void setup() {
       // ->connect_to(new MovingAverage(10, 1.0, "/rawwater/temp/average"))
       ->connect_to(new Linear(1.0, 0.0, "/rawwater/temp/calibrate"))
       ->connect_to(new SKOutputFloat("environment.water.temperature", "/rawwater/temp/sk"))
-      ->connect_to(new SSD1306Display(display, DATA_ROW_2, DATA_COL_0, "K"));
+      ->connect_to(new KelvinToFahrenheit())
+      ->connect_to(new SSD1306Display(display, DATA_ROW_2, DATA_COL_0, "F"));
   
   /////////////////////////////////////////////////////////
   // SK Path: /electrical/batteries/<house>/voltage (V)
@@ -442,7 +463,7 @@ void setup() {
   battery_voltage_input 
       // Can we call the display twice with different levels of transforms? 
       // Useful for debugging and calibration.
-      ->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_0)) // Display raw ADC value
+      //->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_0)) // Display raw ADC value
       ->connect_to(new BatteryVoltageInterpreter("/battery/voltage/curve"))
       ->connect_to(new Linear(1.0, 0.0, "/battery/voltage/calibrate"))
       ->connect_to(new SKOutputFloat("electrical.batteries.houseBattery.voltage", "/battery/voltage/sk"))
@@ -455,7 +476,7 @@ void setup() {
       new RepeatSensor<int16_t>(1000, battery_current_read_callback);
 
   battery_current_input 
-      ->connect_to(new SSD1306Display(display, DATA_ROW_1, DATA_COL_0)) // Raw ADC code value
+      //->connect_to(new SSD1306Display(display, DATA_ROW_1, DATA_COL_0)) // Raw ADC code value
       ->connect_to(new BatteryCurrentInterpreter("/battery/current/curve"))
       ->connect_to(new Linear(1.0, 0.0, "/battery/current/calibrate"))
       ->connect_to(new SKOutputFloat("electrical.batteries.houseBattery.current", "/battery/current/sk"))
@@ -480,7 +501,7 @@ void setup() {
   // fw_lvl_metadata->units_ = "ratio";
 
   fresh_water_level_input
-      ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_0)) // Raw ADC code value for interpolation calibration process
+      ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_0)) // Raw ADC code value for later interpolation calibration
       ->connect_to(new WaterTankLevelInterpreter("/freshwater/tank/curve"))
       // Smooth it out by averaging 10 readings over 5 mins (scaling by 1.0)
       ->connect_to(new MovingAverage(10, 1.0, "/freshwater/tank/average"))
@@ -542,18 +563,19 @@ void setup() {
     // Smooth it out by averaging 10 readings (scaling by 1.0)
     // ->connect_to(new MovingAverage(10, 1.0, "/cabin/pressure/average"))
     // ->connect_to(new Linear(1.0, 0.0, "/cabin/pressure2/calibrate"))
-    ->connect_to(new SKOutputInt("environment.inside.cabin.pressure2", "/cabin/pressure2/sk"));
+    ->connect_to(new SKOutputInt("environment.inside.cabin.pressure2", 
+                                  "/cabin/pressure2/sk", 
+                                  new SKMetadata("Pa", "Barometric pressure")));
     // ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "Pa"));
 
   /////////////////////////////////////////////////////////
   // SK Path: /navigation/headingMagnetic (radians)
   // 
   auto* compass_heading_input =
-    new RepeatSensor<float>(200, compass_read_callback); // Read 5 times per second
+    new RepeatSensor<float>(500, compass_read_callback); // Read 2 times per second
 
   compass_heading_input
-    ->connect_to(new AngleCorrection(0.0f, 0.0f, "/heading/magnetic/correction")) // TODO: Make a config item for this
-    ->connect_to(new Linear(FACTRAD, 0.0, "/heading/magnetic/radians"))
+    // ->connect_to(new AngleCorrection(0.0f, 0.0f, "/heading/magnetic/correction")) // TODO: Make a config item for this
     ->connect_to(new SKOutputFloat("navigation.headingMagnetic", "/heading/magnetic/sk"));
     // ->connect_to(new SSD1306Display(display, DATA_ROW_5, DATA_COL_1, "Pa"));
 
@@ -569,10 +591,10 @@ void setup() {
   auto* attitude_input =
     new RepeatSensor<String>(500, attitude_read_callback); // Read 2 times per second
 
-  attitude_input
-    ->connect_to(new LambdaConsumer<String>([](String input) {
-      ESP_LOGD("WitMotion", "JSONified attitude output: %s", input.c_str());
-    }));
+  // attitude_input
+  //   ->connect_to(new LambdaConsumer<String>([](String input) {
+  //     ESP_LOGD("WitMotion", "JSONified attitude output: %s", input.c_str());
+  //   }));
 
   attitude_input
     ->connect_to(new SKOutputRawJson("navigation.attitude", "/navigation/attitude/sk"));

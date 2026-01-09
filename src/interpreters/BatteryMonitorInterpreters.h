@@ -32,6 +32,23 @@ class BatteryVoltageInterpreter : public CurveInterpolator {
   }
 };
 
+class BatteryVoltageInterpreter2 : public CurveInterpolator {
+ public:
+  BatteryVoltageInterpreter2(String config_path = "")
+      : CurveInterpolator(NULL, config_path) {
+    // Populate a lookup table to translate the *linear* ADC readings 
+    // returned by the new battery voltage sender to a voltage value (V)
+    // from 10 volts to 16 volts
+
+    clear_samples();
+    // addSample(CurveInterpolator::Sample(knownADCValue, knownVoltage));
+    add_sample(CurveInterpolator::Sample(0, 0.00));
+    add_sample(CurveInterpolator::Sample(5280, 10.0));
+    add_sample(CurveInterpolator::Sample(26400, 16.0));
+    add_sample(CurveInterpolator::Sample(32767, 20.0));
+  }
+};
+
 class BatteryCurrentInterpreter : public CurveInterpolator {
  public:
   BatteryCurrentInterpreter(String config_path = "")
