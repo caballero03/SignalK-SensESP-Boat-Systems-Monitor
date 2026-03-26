@@ -55,9 +55,19 @@ using namespace sensesp::onewire;
 // SH-ESP32 on-board, blue LED (GPIO2)
 #define STATUS_LED          2
 
-// Declare the two ADS1115 IC's
+// Declare the four ADS1115 IC's
 Adafruit_ADS1115 ads0;
 Adafruit_ADS1115 ads1;
+Adafruit_ADS1115 ads2;
+Adafruit_ADS1115 ads3;
+
+bool ads_0_present;
+bool ads_1_present;
+bool ads_2_present;
+bool ads_3_present;
+bool one_wire_present;
+bool pht_present;
+bool oled_display_present;
 
 /*=========================================================================
     I2C ADDRESS/BITS 
@@ -69,6 +79,8 @@ Adafruit_ADS1115 ads1;
     -----------------------------------------------------------------------*/
 #define ADS1115_0_ADDR (0x48) // ADDR -> GND
 #define ADS1115_1_ADDR (0x49) // ADDR -> VCC
+#define ADS1115_2_ADDR (0x4a) // ADDR -> SDA
+#define ADS1115_3_ADDR (0x4b) // ADDR -> SCL
 /*=========================================================================*/
 
 // ADS1115_0 channels
@@ -82,6 +94,19 @@ Adafruit_ADS1115 ads1;
 #define BATTERY_VOLTAGE_CHANNEL         1
 #define FRESH_WATER_TANK_LEVEL_CHANNEL  2
 #define RESERVED_CHANNEL                3
+
+// Expansion channels
+// ADS1115_2 channels
+#define EXP0_CHANNEL         0
+#define EXP1_CHANNEL         1
+#define EXP2_CHANNEL  2
+#define EXP3_CHANNEL                3
+
+// ADS1115_3 channels
+#define EXP4_CHANNEL         0
+#define EXP5_CHANNEL         1
+#define EXP6_CHANNEL  2
+#define EXP7_CHANNEL                3
 
 // I2C bus
 TwoWire* i2c;
@@ -132,30 +157,30 @@ void I2C_Scanner (TwoWire *i2c)
 //////////////////////////////////////////////////////////////////////
 // First ADS1115 board
 int16_t oil_pressure_read_callback() { 
-  return ads0.readADC_SingleEnded(ENGINE_OIL_PRESSURE_CHANNEL); }
+  return (ads_0_present ? ads0.readADC_SingleEnded(ENGINE_OIL_PRESSURE_CHANNEL) : 15840); }
 
 int16_t engine_temp_read_callback() { 
-  // return ads0.readADC_SingleEnded(ENGINE_COOLANT_TEMPERATURE_CHANNEL); }
-  return ads1.readADC_SingleEnded(RESERVED_CHANNEL); }
+  // return (ads_0_present ? ads0.readADC_SingleEnded(ENGINE_COOLANT_TEMPERATURE_CHANNEL); }
+  return (ads_1_present ? ads1.readADC_SingleEnded(RESERVED_CHANNEL) : 15840); }
 
 int16_t raw_water_temp_read_callback() { 
-  return ads0.readADC_SingleEnded(RAW_WATER_TEMPERATURE_CHANNEL); }
+  return (ads_0_present ? ads0.readADC_SingleEnded(RAW_WATER_TEMPERATURE_CHANNEL) : 7280); }
 
 int16_t diesel_tank_level_read_callback() { 
-  return ads0.readADC_SingleEnded(DIESEL_TANK_FUEL_LEVEL_CHANNEL); }
+  return (ads_0_present ? ads0.readADC_SingleEnded(DIESEL_TANK_FUEL_LEVEL_CHANNEL) : 15840); }
 
 // Second ADS1115 board
 int16_t fresh_water_level_read_callback() { 
-  return ads1.readADC_SingleEnded(FRESH_WATER_TANK_LEVEL_CHANNEL); }
+  return (ads_1_present ? ads1.readADC_SingleEnded(FRESH_WATER_TANK_LEVEL_CHANNEL) : 15840); }
 
 int16_t battery_voltage_read_callback() { 
-  return ads1.readADC_SingleEnded(BATTERY_VOLTAGE_CHANNEL); }
+  return (ads_1_present ? ads1.readADC_SingleEnded(BATTERY_VOLTAGE_CHANNEL) : 15840); }
 
 int16_t battery_current_read_callback() { 
-  return ads1.readADC_SingleEnded(BATTERY_CURRENT_CHANNEL); }
+  return (ads_1_present ? ads1.readADC_SingleEnded(BATTERY_CURRENT_CHANNEL) : 15840 + 50); }
 
 int16_t reserved_read_callback() { 
-  return ads1.readADC_SingleEnded(RESERVED_CHANNEL); }
+  return (ads_1_present ? ads1.readADC_SingleEnded(RESERVED_CHANNEL) : 15840); }
 
 int16_t debug_read_callback() { 
   // Return a value representing a center reading (12mA in the 4-20mA range)
@@ -168,6 +193,10 @@ int16_t debug_read_callback() {
 float pressure_read_callback() { 
   sensors_event_t pressure;
 
+  if(!pht_present) {
+    return 0.0f;
+  }
+
   Adafruit_Sensor *pressure_sensor = ms8607.getPressureSensor();
 
   pressure_sensor->getEvent(&pressure);
@@ -179,6 +208,10 @@ float pressure_read_callback() {
 float humidity_read_callback() { 
   sensors_event_t humidity;
 
+  if(!pht_present) {
+    return 0.0f;
+  }
+  
   Adafruit_Sensor *humidity_sensor = ms8607.getHumiditySensor();
 
   humidity_sensor->getEvent(&humidity);
@@ -193,6 +226,10 @@ float temperature_read_callback() {
   // Adafruit_Sensor *temp_sensor = ms8607.getTemperatureSensor();
 
   // temp_sensor->getEvent(&temp);
+
+  if(!pht_present) {
+    return 0.0f;
+  }
 
   sensors_event_t temp, pressure, humidity;
   ms8607.getEvent(&pressure, &temp, &humidity);
@@ -275,10 +312,19 @@ void setup() {
   // Create the global SensESPApp() object.
   SensESPAppBuilder builder;
   // sensesp_app = builder.set_hostname("gwtw-sysmon")
-  sensesp_app = builder.set_hostname("sensESP")
+  sensesp_app = builder.set_hostname("SysMon")
                     // ->set_sk_server("192.168.0.152", 3000)
                     // ->set_wifi_client("Franklin T10 6907", "supersecretpassword")
                     ->get_app();
+  
+  // Reset hardware detection flags
+  ads_0_present = false;
+  ads_1_present = false;
+  ads_2_present = false;
+  ads_3_present = false;
+  one_wire_present = false;
+  pht_present = false;
+  oled_display_present = false;
 
   // Set up Dallas one-wire bus
   DallasTemperatureSensors* dts = new DallasTemperatureSensors(ONEWIRE_PIN);
@@ -307,36 +353,43 @@ void setup() {
   // This limits values read to between codes: 0 and 26400 (0 to 3.3V)
   ads0.setGain(GAIN_ONE);
   ads1.setGain(GAIN_ONE);
+  ads2.setGain(GAIN_ONE);
+  ads3.setGain(GAIN_ONE);
 
   if (!ads0.begin(ADS1115_0_ADDR, i2c)) {
-    Serial.println("Failed to initialize ads0.");
-    //while (1);
+    ESP_LOGW(__FILENAME__, "Failed to initialize ads0.");
+  } else {
+    ads_0_present = true;
   }
 
   if (!ads1.begin(ADS1115_1_ADDR, i2c)) {
-    Serial.println("Failed to initialize ads1.");
-    //while (1);
+    ESP_LOGW(__FILENAME__, "Failed to initialize ads1.");
+  } else {
+    ads_1_present = true;
   }
 
-  /////////////////////////////////////////////////////////////
-  // ms8607 temperature, barometric pressure and humidity 
-  // sensor
+  if (!ads2.begin(ADS1115_2_ADDR, i2c)) {
+    ESP_LOGW(__FILENAME__, "Failed to initialize ads2.");
+  } else {
+    ads_2_present = true;
+  }
+
+  if (!ads3.begin(ADS1115_3_ADDR, i2c)) {
+    ESP_LOGW(__FILENAME__, "Failed to initialize ads3.");
+  } else {
+    ads_3_present = true;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // ms8607 temperature, barometric pressure and humidity sensor
 
   if (!ms8607.begin(i2c)) {
     // Serial.println("Failed to find MS8607 chip");
-    ESP_LOGW(
-      __FILENAME__,
-      "Failed to find MS8607 chip");
-    // while (1) { delay(10); }
+    ESP_LOGW(__FILENAME__, "Failed to find MS8607 chip");
   } else {
-    Serial.println("MS8607 PHT Found!");
-    ESP_LOGD(
-      __FILENAME__,
-      "MS8607 PHT Found!");
-
-    // pressure_sensor = ms8607.getPressureSensor();
-    // temp_sensor = ms8607.getTemperatureSensor();
-    // humidity_sensor = ms8607.getHumiditySensor();
+    // Serial.println("MS8607 PHT Found!");
+    ESP_LOGD(__FILENAME__, "MS8607 PHT Found!");
+    pht_present = true;
   }
 
   // Override defaults if needed
@@ -349,19 +402,23 @@ void setup() {
   // 
   display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, i2c, -1);
   if (!display->begin(SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDR)) {
-    Serial.println(F("SSD1306 allocation failed")); // Now what?!?
+    ESP_LOGW(__FILENAME__, "SSD1306 allocation failed"); // Now what?!?
+  } else {
+    oled_display_present = true;
   }
 
   // Wait for display to be ready
   delay(100);
 
-  display->setRotation(DISPLAY_ROTATION);
-  display->clearDisplay();
-  display->setTextSize(1); // Text size. 1 is default 6x8, 2 is 12x16, 3 is 18x24, etc
-  display->setTextColor(SSD1306_WHITE);
-  display->setCursor(0, 0);
-  display->printf("Hostname: %s\n", sensesp_app->get_hostname().c_str());
-  display->display();
+  if(oled_display_present) {
+    display->setRotation(DISPLAY_ROTATION);
+    display->clearDisplay();
+    display->setTextSize(1); // Text size. 1 is default 6x8, 2 is 12x16, 3 is 18x24, etc
+    display->setTextColor(SSD1306_WHITE);
+    display->setCursor(0, 0);
+    display->printf("Hostname: %s\n", sensesp_app->get_hostname().c_str());
+    display->display();
+  }
 
   // Let's read the sensor(s) every 1000 ms.
   unsigned int read_interval = 1000;
@@ -403,7 +460,7 @@ void setup() {
       new RepeatSensor<int16_t>(5000, engine_temp_read_callback); //engine_temp_read_callback (debug_read_callback = 50C)
 
   engine_water_temp_input
-      ->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_0)) // Display raw ADC value
+      // ->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_0)) // Display raw ADC value
       ->connect_to(new RTD_Minus50To150C_TempInterpreter("/engine/temp/curve"))
       // Smooth it out by averaging 10 readings (scaling by 1.0)
       // ->connect_to(new MovingAverage(10, 1.0, "/engine/temp/average"))
@@ -437,6 +494,8 @@ void setup() {
       ->connect_to(new MovingAverage(10, 1.0, "/diesel/tank/average"))
       ->connect_to(new Linear(1.0, 0.0, "/diesel/tank/calibrate"))
       ->connect_to(new SKOutputFloat("tanks.fuel.main.currentLevel", "/diesel/tank/sk"))
+      // Prepare for the OLED display
+      ->connect_to(new Linear(100.0, 0.0, "/diesel/tank/percent"))
       ->connect_to(new SSD1306Display(display, DATA_ROW_3, DATA_COL_1, "%"));
   
   /////////////////////////////////////////////////////////
@@ -464,9 +523,9 @@ void setup() {
       // Can we call the display twice with different levels of transforms? 
       // Useful for debugging and calibration.
       //->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_0)) // Display raw ADC value
-      ->connect_to(new BatteryVoltageInterpreter("/battery/voltage/curve"))
+      ->connect_to(new BatteryVoltageInterpreter2("/battery/voltage/curve"))
       ->connect_to(new Linear(1.0, 0.0, "/battery/voltage/calibrate"))
-      ->connect_to(new SKOutputFloat("electrical.batteries.houseBattery.voltage", "/battery/voltage/sk"))
+      ->connect_to(new SKOutputFloat("electrical.batteries.house.voltage", "/battery/voltage/sk"))
       ->connect_to(new SSD1306Display(display, DATA_ROW_0, DATA_COL_2, "V")); // Show value sent to SK
   
   /////////////////////////////////////////////////////////
@@ -479,7 +538,7 @@ void setup() {
       //->connect_to(new SSD1306Display(display, DATA_ROW_1, DATA_COL_0)) // Raw ADC code value
       ->connect_to(new BatteryCurrentInterpreter("/battery/current/curve"))
       ->connect_to(new Linear(1.0, 0.0, "/battery/current/calibrate"))
-      ->connect_to(new SKOutputFloat("electrical.batteries.houseBattery.current", "/battery/current/sk"))
+      ->connect_to(new SKOutputFloat("electrical.batteries.house.current", "/battery/current/sk"))
       ->connect_to(new SSD1306Display(display, DATA_ROW_1, DATA_COL_2, "A"));
 
   /////////////////////////////////////////////////////////
@@ -507,6 +566,8 @@ void setup() {
       ->connect_to(new MovingAverage(10, 1.0, "/freshwater/tank/average"))
       ->connect_to(new Linear(1.0, 0.0, "/freshwater/tank/calibrate"))
       ->connect_to(new SKOutputFloat(sk_freshwater_level_path, "/freshwater/tank/sk"))
+      // Prepare for the OLED display
+      ->connect_to(new Linear(100.0, 0.0, "/freshwater/tank/percent"))
       ->connect_to(new SSD1306Display(display, DATA_ROW_6, DATA_COL_2, "%"));
 
 
@@ -617,12 +678,11 @@ void setup() {
   auto int_to_string_transform = new LambdaTransform<int, String>(int_to_string_function);
 
   bilge_pump_state_input
-        ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_0, "<-BLG"))
+        // ->connect_to(new SSD1306Display(display, DATA_ROW_7, DATA_COL_0, "<-BLG"))
         ->connect_to(int_to_string_transform)
         ->connect_to(new SKOutputString("sensors.bilgePump.status"));
 
   // bilge_pump_state_input->connect_to(new SKOutputString("propulsion.engine.bilge.raw"));
-
 
   // Setup a second serial port to read WitMotion IMU device at 9600 baud
   Serial1.begin(9600, SERIAL_8N1, RXD1, TXD1);

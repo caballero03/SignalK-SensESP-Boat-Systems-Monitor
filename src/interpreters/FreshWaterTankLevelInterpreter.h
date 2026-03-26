@@ -26,24 +26,43 @@ class WaterTankLevelInterpreter : public CurveInterpolator {
     
     clear_samples();
     // addSample(CurveInterpolator::Sample(knownADCValue, knownPercent));
-    add_sample(CurveInterpolator::Sample(0, 0.00));
+    // add_sample(CurveInterpolator::Sample(0, 0.00));
+    // add_sample(CurveInterpolator::Sample(5280, 0.00));
+    // add_sample(CurveInterpolator::Sample(5984, 6.25));
+    // add_sample(CurveInterpolator::Sample(6688, 12.50));
+    // add_sample(CurveInterpolator::Sample(7392, 18.75));
+    // add_sample(CurveInterpolator::Sample(8096, 25.00));
+    // add_sample(CurveInterpolator::Sample(8800, 31.25));         // TODO: Change this to a 0.0 to 1.0 ratio
+    // add_sample(CurveInterpolator::Sample(9504, 37.50));
+    // add_sample(CurveInterpolator::Sample(10208, 43.75));
+    // add_sample(CurveInterpolator::Sample(10912, 50.00));
+    // add_sample(CurveInterpolator::Sample(11616, 56.25));
+    // add_sample(CurveInterpolator::Sample(12320, 62.50));
+    // add_sample(CurveInterpolator::Sample(13024, 68.75));
+    // add_sample(CurveInterpolator::Sample(13728, 75.00));
+    // add_sample(CurveInterpolator::Sample(14432, 81.25));
+    // add_sample(CurveInterpolator::Sample(15136, 87.50));
+    // add_sample(CurveInterpolator::Sample(15840, 93.75)); // half of sensor range
+    // add_sample(CurveInterpolator::Sample(32767, 100.0));
+
+        add_sample(CurveInterpolator::Sample(0, 0.00));
     add_sample(CurveInterpolator::Sample(5280, 0.00));
-    add_sample(CurveInterpolator::Sample(5984, 6.25));
-    add_sample(CurveInterpolator::Sample(6688, 12.50));
-    add_sample(CurveInterpolator::Sample(7392, 18.75));
-    add_sample(CurveInterpolator::Sample(8096, 25.00));
-    add_sample(CurveInterpolator::Sample(8800, 31.25));         // TODO: Change this to a 0.0 to 1.0 ratio
-    add_sample(CurveInterpolator::Sample(9504, 37.50));
-    add_sample(CurveInterpolator::Sample(10208, 43.75));
-    add_sample(CurveInterpolator::Sample(10912, 50.00));
-    add_sample(CurveInterpolator::Sample(11616, 56.25));
-    add_sample(CurveInterpolator::Sample(12320, 62.50));
-    add_sample(CurveInterpolator::Sample(13024, 68.75));
-    add_sample(CurveInterpolator::Sample(13728, 75.00));
-    add_sample(CurveInterpolator::Sample(14432, 81.25));
-    add_sample(CurveInterpolator::Sample(15136, 87.50));
-    add_sample(CurveInterpolator::Sample(15840, 93.75)); // half of sensor range
-    add_sample(CurveInterpolator::Sample(32767, 100.0));
+    add_sample(CurveInterpolator::Sample(5984, 0.0625));
+    add_sample(CurveInterpolator::Sample(6688, 0.1250));
+    add_sample(CurveInterpolator::Sample(7392, 0.1875));
+    add_sample(CurveInterpolator::Sample(8096, 0.2500));
+    add_sample(CurveInterpolator::Sample(8800, 0.3125));         // TODO: Change this to a 0.0 to 1.0 ratio
+    add_sample(CurveInterpolator::Sample(9504, 0.3750));
+    add_sample(CurveInterpolator::Sample(10208, 0.4375));
+    add_sample(CurveInterpolator::Sample(10912, 0.5000));
+    add_sample(CurveInterpolator::Sample(11616, 0.5625));
+    add_sample(CurveInterpolator::Sample(12320, 0.6250));
+    add_sample(CurveInterpolator::Sample(13024, 0.6875));
+    add_sample(CurveInterpolator::Sample(13728, 0.7500));
+    add_sample(CurveInterpolator::Sample(14432, 0.8125));
+    add_sample(CurveInterpolator::Sample(15136, 0.8750));
+    add_sample(CurveInterpolator::Sample(15840, 0.9375)); // half of sensor range
+    add_sample(CurveInterpolator::Sample(32767, 1.0));
   }
 };
 
