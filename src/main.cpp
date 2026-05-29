@@ -515,7 +515,8 @@ void setup() {
   
   /////////////////////////////////////////////////////////
   // SK Path: /electrical/batteries/<house>/voltage (V)
-  // 0 to 20 volts full scale, 5280 to 26400
+  // 0 to 20 volts full scale, 5280 to 26400 -- deprecated
+  // 10 to 16 volts full scale, 5280 to 26400 -- new range
   auto* battery_voltage_input =
       new RepeatSensor<int16_t>(1000, battery_voltage_read_callback);
 

@@ -22,7 +22,7 @@ class WaterTankLevelInterpreter : public CurveInterpolator {
       : CurveInterpolator(NULL, config_path) {
     // Populate a lookup table to translate the non-linear readings 
     // returned by the water tank level sender to a percent of fullness value (ratio)
-    // Water level sensor has 1 meter range. Tank depth is 0.5 meters when full.
+    // Water level sensor has 1 meter range. Tank depth is roughly 0.5 meters when full.
     
     clear_samples();
     // addSample(CurveInterpolator::Sample(knownADCValue, knownPercent));
@@ -45,14 +45,14 @@ class WaterTankLevelInterpreter : public CurveInterpolator {
     // add_sample(CurveInterpolator::Sample(15840, 93.75)); // half of sensor range
     // add_sample(CurveInterpolator::Sample(32767, 100.0));
 
-        add_sample(CurveInterpolator::Sample(0, 0.00));
-    add_sample(CurveInterpolator::Sample(5280, 0.00));
+    add_sample(CurveInterpolator::Sample(0, 0.00));       // This could actually be a fault condition indicating a broken wire
+    add_sample(CurveInterpolator::Sample(5280, 0.00));    // Tank is empty
     add_sample(CurveInterpolator::Sample(5984, 0.0625));
     add_sample(CurveInterpolator::Sample(6688, 0.1250));
     add_sample(CurveInterpolator::Sample(7392, 0.1875));
     add_sample(CurveInterpolator::Sample(8096, 0.2500));
-    add_sample(CurveInterpolator::Sample(8800, 0.3125));         // TODO: Change this to a 0.0 to 1.0 ratio
-    add_sample(CurveInterpolator::Sample(9504, 0.3750));
+    add_sample(CurveInterpolator::Sample(8800, 0.3125));     // Changed this to a 0.0 to 1.0 ratio
+    add_sample(CurveInterpolator::Sample(9504, 0.3750));     // TODO: add a few more entries, one per every two gallons (24 readings)
     add_sample(CurveInterpolator::Sample(10208, 0.4375));
     add_sample(CurveInterpolator::Sample(10912, 0.5000));
     add_sample(CurveInterpolator::Sample(11616, 0.5625));
@@ -61,8 +61,9 @@ class WaterTankLevelInterpreter : public CurveInterpolator {
     add_sample(CurveInterpolator::Sample(13728, 0.7500));
     add_sample(CurveInterpolator::Sample(14432, 0.8125));
     add_sample(CurveInterpolator::Sample(15136, 0.8750));
-    add_sample(CurveInterpolator::Sample(15840, 0.9375)); // half of sensor range
-    add_sample(CurveInterpolator::Sample(32767, 1.0));
+    add_sample(CurveInterpolator::Sample(15840, 0.9375)); // half of sensor range (hard to find a sensor with a 0 to 0.5 meter range)
+    add_sample(CurveInterpolator::Sample(15841, 1.0));    // This will be whatever the actual maximum fullness is when calibrating
+    add_sample(CurveInterpolator::Sample(32767, 1.0));    // This shuold cover any strange anomolies above expected
   }
 };
 
